@@ -196,6 +196,7 @@ Op.new "v", -> inst {
 Op.new "#", -> a { a }
 Op.new "r", -> inst { inst.stack.reverse!   }, true
 Op.new " ", -> {}
+
 if __FILE__ == $0
     if ARGV.size == 0
         puts "usage: ruby somme.rb <filename>"
@@ -211,10 +212,11 @@ if __FILE__ == $0
             prog = File.read ARGV[1]
         end
         options["silent"] = true if opt.include? "s"
+        options["display"] = true if opt.include? "p"
     else
         prog = File.read ARGV[0]
     end
     inst = Somme.new prog, options
     inst.run
-    # p inst.stack
+    p inst.stack if options["display"]
 end
