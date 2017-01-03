@@ -1,0 +1,205 @@
+def to_grid(str)
+    s = str.split "\n"
+    maxlen = s.map(&:length).max
+    s.map { |l| l.ljust(maxlen).chars }
+end
+
+class Somme
+    @@ops = {}
+    def initialize(prog)
+        @codes = to_grid(prog).transpose.map { |col|
+            col.map { |e| e.ord - 32 } .inject(0, :+) % 95
+        }
+        @ops = @@ops
+        @stack = []
+        @index = 0
+        @running = true
+        @last_push = 42
+        @reg = 100
+    end
+    
+    attr_accessor :stack, :index, :running, :last_push, :codes, :ops, :reg
+    
+    def step
+        unless @running && @index < @codes.size
+            @running = false
+            return nil
+        end
+        code = @codes[@index]
+        exec(code)
+        @index += 1
+    end
+    
+    def run
+        step while @running
+    end
+    
+    def exec(code)
+        raise "opcode #{code} (\"#{(code + 32).chr}\") does not exist"  unless @@ops.has_key? code
+        op = @ops[code]
+        arity = op.arity
+        while @stack.size < arity
+            @stack.push @last_push
+        end 
+        args = @stack.pop arity
+        res = op[self, *args]
+        @last_push = res if arity == 0
+        @stack.push *res unless res == nil
+    end
+    
+    def self.set_op(key, op)
+        unless op.instance_of? Op
+            raise "#{op} should have been an Op, got a `#{op.class.name}`"
+        end
+        @@ops[key] = op
+    end
+    
+    def self.get_ops
+        @@ops
+    end
+end
+
+class Func
+    def initialize(body)
+        @body = body
+    end
+    
+    def exec(somme)
+        @body.each { |code|
+            somme.exec(code)
+        }
+    end
+    
+    def over(*args)
+        inst = Somme.new @body.map { |e| (e + 32).chr } .join
+        inst.stack = args
+        inst.run
+        inst.stack.pop
+    end
+end
+
+class Op
+    def initialize(key, op, use_inst = false)
+        @key = key
+        @op = op
+        @use_inst = use_inst
+        Somme.set_op(key.ord - 32, self)
+    end
+    
+    def [](*a)
+        a.shift unless @use_inst || !a[0].is_a?(Somme)
+        @op[*a]
+    end
+    
+    def to_s
+        "Op { #{@key} }"
+    end
+    
+    def arity
+        @op.arity - (@use_inst ? 1 : 0)
+    end
+    
+    def inspect
+        self.to_s
+    end
+end
+
+Op.new ?0, -> { 0 }
+Op.new ?1, -> { 1 }
+Op.new ?2, -> { 2 }
+Op.new ?3, -> { 3 }
+Op.new ?4, -> { 4 }
+Op.new ?5, -> { 5 }
+Op.new ?6, -> { 6 }
+Op.new ?7, -> { 7 }
+Op.new ?8, -> { 8 }
+Op.new ?9, -> { 9 }
+Op.new ?A, -> { 10 }
+Op.new ?B, -> { 11 }
+Op.new ?C, -> { 12 }
+Op.new ?D, -> { 13 }
+Op.new ?E, -> { 14 }
+Op.new ?F, -> { 15 }
+Op.new ".", -> z { print z; z }
+Op.new ",", -> z { print z.chr; z }
+Op.new ":", -> z { [z, z] }
+Op.new "i", -> z { z + 1 }
+Op.new "I", -> z { z - 1 }
+Op.new "t", -> z { z + 2 }
+Op.new "T", -> z { z - 2 }
+Op.new "d", -> z { z * 2 }
+Op.new "D", -> z { z / 2 }
+Op.new "j", -> z { z - 3 }
+Op.new "J", -> z { z + 3 }
+Op.new "h", -> z { z / 3 }
+Op.new "H", -> z { z * 3 }
+Op.new "s", -> z { z * z }
+Op.new "S", -> z { Math.sqrt z }
+Op.new "+", -> a, b { a + b }
+Op.new "-", -> a, b { a - b }
+Op.new "*", -> a, b { a * b }
+Op.new "/", -> a, b { a / b }
+Op.new "p", -> a, b { a ** b }
+Op.new "m", -> inst {
+    inst.index += 1
+    next_op = inst.codes[inst.index]
+    op = Somme.get_ops[next_op]
+    inst.stack.map! { |e| op[e] }
+    inst.stack.reject! { |e| e == nil }
+}, true
+Op.new "M", -> inst, f {
+    inst.stack.map! { |e| f.over(e) }
+    inst.stack.reject! { |e| e == nil }
+}, true
+Op.new "`", -> inst {
+    body = []
+    until inst.codes[inst.index + 1] == 64 or inst.codes.size <= inst.index
+        body.push inst.codes[inst.index += 1]
+    end
+    inst.index += 1
+    Func.new body
+}, true
+Op.new "~", -> inst {
+    inst.index += 1
+    next_op = inst.codes[inst.index]
+    Func.new [next_op]
+}, true
+Op.new "!", -> inst, f {
+    f.exec(inst)
+    nil
+}, true
+Op.new "$", -> z { }
+Op.new "@", -> inst, f {
+    inst.index += 1
+    redef = inst.codes[inst.index]
+    Op.new (redef + 32).chr, -> inst {
+        f.exec(inst)
+        nil
+    }, true
+    nil
+}, true
+Op.new "^", -> inst, v {
+    inst.reg = v
+    nil
+}, true
+Op.new "v", -> inst {
+    inst.reg
+}, true
+Op.new "#", -> a { a }
+Op.new "r", -> inst { inst.stack.reverse!   }, true
+Op.new " ", -> {}
+if __FILE__ == $0
+    if ARGV.size == 0
+        puts "usage: ruby somme.rb <filename>"
+        puts "       ruby somme.rb -e \"code\""
+        exit 0
+    end
+    if "-/".include?(ARGV[0][0]) && ARGV[0][1] == "e"
+        prog = ARGV[1]
+    else
+        prog = File.read ARGV[0]
+    end
+    inst = Somme.new prog
+    inst.run
+    # p inst.stack
+end
