@@ -6,7 +6,7 @@ end
 
 class Somme
     @@ops = {}
-    def initialize(prog)
+    def initialize(prog, options = {})
         @codes = to_grid(prog).transpose.map { |col|
             col.map { |e| e.ord - 32 } .inject(0, :+) % 95
         }
@@ -16,6 +16,7 @@ class Somme
         @running = true
         @last_push = 42
         @reg = 100
+        @options = options
     end
     
     attr_accessor :stack, :index, :running, :last_push, :codes, :ops, :reg
@@ -35,7 +36,13 @@ class Somme
     end
     
     def exec(code)
-        raise "opcode #{code} (\"#{(code + 32).chr}\") does not exist"  unless @@ops.has_key? code
+        unless @@ops.has_key? code
+            if @options["silent"]
+                return
+            else
+                raise "opcode #{code} (\"#{(code + 32).chr}\") does not exist"
+            end
+        end
         op = @ops[code]
         arity = op.arity
         while @stack.size < arity
@@ -45,6 +52,7 @@ class Somme
         res = op[self, *args]
         @last_push = res if arity == 0
         @stack.push *res unless res == nil
+        return
     end
     
     def self.set_op(key, op)
@@ -194,12 +202,19 @@ if __FILE__ == $0
         puts "       ruby somme.rb -e \"code\""
         exit 0
     end
-    if "-/".include?(ARGV[0][0]) && ARGV[0][1] == "e"
-        prog = ARGV[1]
+    opt = ARGV[0]
+    options = {}
+    if "-/".include?(opt[0])
+        if opt.include? "e"
+            prog = ARGV[1]
+        else
+            prog = File.read ARGV[1]
+        end
+        options["silent"] = true if opt.include? "s"
     else
         prog = File.read ARGV[0]
     end
-    inst = Somme.new prog
+    inst = Somme.new prog, options
     inst.run
     # p inst.stack
 end
