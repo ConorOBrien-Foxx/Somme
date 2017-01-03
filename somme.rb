@@ -194,8 +194,14 @@ Op.new "v", -> inst {
     inst.reg
 }, true
 Op.new "#", -> a { a }
-Op.new "r", -> inst { inst.stack.reverse!   }, true
+Op.new "r", -> inst { inst.stack.reverse!; nil }, true
 Op.new " ", -> {}
+Op.new ";", -> a { exit a }
+Op.new "L", -> inst, f {
+    until inst.stack.last == 0
+        f.exec(inst)
+    end
+}, true
 
 if __FILE__ == $0
     if ARGV.size == 0
