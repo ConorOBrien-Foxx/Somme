@@ -1,7 +1,28 @@
+require 'io/console'
+
 def to_grid(str)
     s = str.split "\n"
     maxlen = s.map(&:length).max
     s.map { |l| l.ljust(maxlen).chars }
+end
+
+$stdin_read = ""
+
+def getch
+    if STDIN.tty?
+        char = STDIN.getch
+        exit(1) if char == "\x03"
+    else
+        if $stdin_read.empty?
+            $stdin_read = STDIN.gets
+        end
+        char = $stdin_read.slice! 0
+    end
+    char
+end
+
+def all_input
+    STDIN.read
 end
 
 class Somme
@@ -145,7 +166,17 @@ Op.new "s", -> z { z * z }
 Op.new "S", -> z { Math.sqrt z }
 Op.new "+", -> a, b { a + b }
 Op.new "-", -> a, b { a - b }
-Op.new "*", -> a, b { a * b }
+Op.new "*", -> inst, a, b {
+    if a.is_a? Func and b.is_a? Func
+        raise "ne method `*` for Func, Func"
+    elsif a.is_a? Func
+        b.times { a.exec(inst) }; nil
+    elsif b.is_a? Func
+        a.times { b.exec(inst) }; nil
+    else
+        a * b
+    end
+}, true
 Op.new "/", -> a, b { a / b }
 Op.new "p", -> a, b { a ** b }
 Op.new "m", -> inst {
@@ -201,6 +232,12 @@ Op.new "L", -> inst, f {
     until inst.stack.last == 0
         f.exec(inst)
     end
+}, true
+Op.new "l", -> inst { inst.stack.size }, true
+Op.new "n", -> { STDIN.gets.to_i }
+Op.new "c", -> { getch.ord }
+Op.new "C", -> inst {
+    all_input.chars.map &:ord
 }, true
 
 if __FILE__ == $0
