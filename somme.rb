@@ -1,14 +1,18 @@
 require 'io/console'
 
 def to_grid(str)
-    s = str.split "\n"
+    s =     str.split "\n"
     maxlen = s.map(&:length).max
     s.map { |l| l.ljust(maxlen).chars }
 end
 
 def simp_type(i)
-    return i.to_i if i.is_a? Numeric and i == i.to_i
-    return i
+    begin
+        return i.send(:map){ |e| simp_type e }
+    rescue
+        return i.to_i if i.is_a? Numeric and i == i.to_i
+        return i
+    end
 end
 
 $stdin_read = ""
@@ -142,7 +146,17 @@ end
 # todo: make new stack for `to_base`
 
 def to_base(a, b)
-    
+    return [a] if a == 1 or a == 2
+    maxlen = Math.log(a + 1, b).ceil
+    base_nums = Array.new maxlen, 0
+    while a > 0
+        c = Math.log(a, b).floor
+        rm = b ** c
+        a -= rm
+        i = maxlen - c - 1
+        base_nums[i] += 1
+    end
+    base_nums
 end
 
 Op.new ?0, -> { 0 }
@@ -168,7 +182,11 @@ Op.new "i", -> z { z + 1 }
 Op.new "I", -> z { z - 1 }
 Op.new "t", -> z { z + 2 }
 Op.new "T", -> z { z - 2 }
-Op.new "b", -> a, b { to_base a, b }
+Op.new "b", -> inst, a, b {
+    inst.ops["[".ord - 32][inst, 0]
+    inst.stack = to_base a, b
+    nil
+}, true
 Op.new "d", -> z { z * 2 }
 Op.new "D", -> z { z / 2 }
 Op.new "j", -> z { z - 3 }
@@ -296,5 +314,8 @@ if __FILE__ == $0
     end
     inst = Somme.new prog, options
     inst.run
-    p inst.stack.map { |e| simp_type e } if options["display"]
+    if options["display"]
+        p simp_type inst.stack_stack
+        p simp_type inst.stack.map
+    end
 end
