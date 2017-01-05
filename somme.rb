@@ -6,6 +6,11 @@ def to_grid(str)
     s.map { |l| l.ljust(maxlen).chars }
 end
 
+def simp_type(i)
+    return i.to_i if i.is_a? Numeric and i == i.to_i
+    return i
+end
+
 $stdin_read = ""
 
 def getch
@@ -33,6 +38,7 @@ class Somme
         }
         @ops = @@ops
         @stack = []
+        @stack_stack = []
         @index = 0
         @running = true
         @last_push = 42
@@ -40,7 +46,7 @@ class Somme
         @options = options
     end
     
-    attr_accessor :stack, :index, :running, :last_push, :codes, :ops, :reg
+    attr_accessor :stack, :stack_stack, :index, :running, :last_push, :codes, :ops, :reg
     
     def step
         unless @running && @index < @codes.size
@@ -133,6 +139,12 @@ class Op
     end
 end
 
+# todo: make new stack for `to_base`
+
+def to_base(a, b)
+    
+end
+
 Op.new ?0, -> { 0 }
 Op.new ?1, -> { 1 }
 Op.new ?2, -> { 2 }
@@ -149,13 +161,14 @@ Op.new ?C, -> { 12 }
 Op.new ?D, -> { 13 }
 Op.new ?E, -> { 14 }
 Op.new ?F, -> { 15 }
-Op.new ".", -> z { print z; z }
+Op.new ".", -> z { print simp_type z; z }
 Op.new ",", -> z { print z.chr; z }
 Op.new ":", -> z { [z, z] }
 Op.new "i", -> z { z + 1 }
 Op.new "I", -> z { z - 1 }
 Op.new "t", -> z { z + 2 }
 Op.new "T", -> z { z - 2 }
+Op.new "b", -> a, b { to_base a, b }
 Op.new "d", -> z { z * 2 }
 Op.new "D", -> z { z / 2 }
 Op.new "j", -> z { z - 3 }
@@ -164,6 +177,9 @@ Op.new "h", -> z { z / 3 }
 Op.new "H", -> z { z * 3 }
 Op.new "s", -> z { z * z }
 Op.new "S", -> z { Math.sqrt z }
+Op.new "%", -> a, b { a % b }
+Op.new "f", -> a { a.floor }
+Op.new "F", -> a { a.ceil }
 Op.new "+", -> a, b { a + b }
 Op.new "-", -> a, b { a - b }
 Op.new "*", -> inst, a, b {
@@ -177,8 +193,9 @@ Op.new "*", -> inst, a, b {
         a * b
     end
 }, true
-Op.new "/", -> a, b { a / b }
+Op.new "/", -> a, b { a * 1.0 / b }
 Op.new "p", -> a, b { a ** b }
+Op.new "P", -> a, b { Math.log a, b }
 Op.new "m", -> inst {
     inst.index += 1
     next_op = inst.codes[inst.index]
@@ -239,6 +256,24 @@ Op.new "c", -> { getch.ord }
 Op.new "C", -> inst {
     all_input.chars.map &:ord
 }, true
+Op.new "'", -> inst {
+    until inst.codes[inst.index + 1] == 7 or inst.codes.size <= inst.index
+        inst.index += 1
+    end
+    inst.index += 1
+    nil
+}, true
+Op.new "[", -> inst, n {
+    new_stack = inst.stack.pop(n)
+    inst.stack_stack.push inst.stack.clone
+    inst.stack = new_stack
+    nil
+}, true
+Op.new "]", -> inst {
+    nst = inst.stack_stack.pop
+    inst.stack = nst.concat inst.stack
+    nil
+}, true
 
 if __FILE__ == $0
     if ARGV.size == 0
@@ -261,5 +296,5 @@ if __FILE__ == $0
     end
     inst = Somme.new prog, options
     inst.run
-    p inst.stack if options["display"]
+    p inst.stack.map { |e| simp_type e } if options["display"]
 end
