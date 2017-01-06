@@ -176,7 +176,7 @@ Op.new ?D, -> { 13 }
 Op.new ?E, -> { 14 }
 Op.new ?F, -> { 15 }
 Op.new ".", -> z { print simp_type z; z }
-Op.new ",", -> z { print z.chr; z }
+Op.new ",", -> z { print z.to_i.chr; z }
 Op.new ":", -> z { [z, z] }
 Op.new "i", -> z { z + 1 }
 Op.new "I", -> z { z - 1 }
