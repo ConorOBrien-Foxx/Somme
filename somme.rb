@@ -83,6 +83,7 @@ class Somme
         res = op[self, *args]
         @last_push = res if arity == 0
         @stack.push *res unless res == nil
+        @stack.map! { |e| simp_type e }
         return
     end
     
@@ -260,6 +261,7 @@ Op.new "v", -> inst {
     inst.reg
 }, true
 Op.new "#", -> a { a }
+Op.new "\\", -> a, b { [b, a] }
 Op.new "r", -> inst { inst.stack.reverse!; nil }, true
 Op.new " ", -> {}
 Op.new ";", -> a { exit a }
@@ -281,6 +283,11 @@ Op.new "'", -> inst {
     inst.index += 1
     nil
 }, true
+Op.new '"', -> inst, a {
+    res = inst.reg
+    inst.reg = a
+    res
+}, true
 Op.new "[", -> inst, n {
     new_stack = inst.stack.pop(n)
     inst.stack_stack.push inst.stack.clone
@@ -290,6 +297,14 @@ Op.new "[", -> inst, n {
 Op.new "]", -> inst {
     nst = inst.stack_stack.pop
     inst.stack = nst.concat inst.stack
+    nil
+}, true
+Op.new "}", -> inst {
+    inst.stack.push inst.stack.shift
+    nil
+}, true
+Op.new "{", -> inst {
+    inst.stack.unshift inst.stack.pop
     nil
 }, true
 
