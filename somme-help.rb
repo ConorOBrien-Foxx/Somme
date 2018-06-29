@@ -1,4 +1,4 @@
-dest = 'Asi:8+::2+:47*-m,'
+dest = 'Asi:8+::2+:47*-m,;'
 
 def b(s,n,m);k=0;k+=1 while (s+k)%m!=n;k;end
 def to_grid(str)
