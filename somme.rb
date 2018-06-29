@@ -91,6 +91,9 @@ class Somme
         unless op.instance_of? Op
             raise "#{op} should have been an Op, got a `#{op.class.name}`"
         end
+        if @@ops.has_key? key
+            raise "#{key} (#{(key + 32).chr}) already exists in @@ops."
+        end
         @@ops[key] = op
     end
     
@@ -189,7 +192,7 @@ Op.new "b", -> inst, a, b {
     nil
 }, true
 Op.new "d", -> z { z * 2 }
-Op.new "D", -> z { z / 2 }
+Op.new "G", -> z { z / 2 }
 Op.new "j", -> z { z - 3 }
 Op.new "J", -> z { z + 3 }
 Op.new "h", -> z { z / 3 }
@@ -198,7 +201,7 @@ Op.new "s", -> z { z * z }
 Op.new "S", -> z { Math.sqrt z }
 Op.new "%", -> a, b { a % b }
 Op.new "f", -> a { a.floor }
-Op.new "F", -> a { a.ceil }
+Op.new "g", -> a { a.ceil }
 Op.new "+", -> a, b { a + b }
 Op.new "-", -> a, b { a - b }
 Op.new "*", -> inst, a, b {
@@ -273,7 +276,7 @@ Op.new "L", -> inst, f {
 Op.new "l", -> inst { inst.stack.size }, true
 Op.new "n", -> { STDIN.gets.to_i }
 Op.new "c", -> { getch.ord }
-Op.new "C", -> inst {
+Op.new "&", -> inst {
     all_input.chars.map &:ord
 }, true
 Op.new "'", -> inst {
