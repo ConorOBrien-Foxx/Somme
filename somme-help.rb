@@ -1,4 +1,4 @@
-dest = 'Asi:8+::2+:47*-m,;'
+dest = ''
 
 def b(s,n,m);k=0;k+=1 while (s+k)%m!=n;k;end
 def to_grid(str)
@@ -7,9 +7,7 @@ def to_grid(str)
     s.map { |l| l.ljust(maxlen).chars }
 end
 prog = <<EOF.chomp
-void main(){import std.stdio;"D".write;}
-/*
-*/
+Print@Sum@Twice!ReadInt
 EOF
 dest = dest.ljust prog.size
 class Array;def sum;inject(0,:+);end;end
